@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen and Audio Recorder Tool</title>
+    <style>
+     <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
+            max-width: 80%;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #007bff;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            margin-bottom: 30px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            margin: 0 10px;
+            cursor: pointer;
+            outline: none;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        video {
+            width: 100%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Screen and Audio Recorder</h1>
+        <div class="controls">
+            <button id="startButton" onclick="toggleRecording()">Start Recording</button>
+        </div>
+        <video id="preview" controls></video>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+        const startButton = document.getElementById("startButton");
+        const preview = document.getElementById("preview");
+
+        async function toggleRecording() {
+            if (isRecording) {
+                // Stop recording and save the video
+                mediaRecorder.stop();
+                isRecording = false;
+                startButton.textContent = "Start Recording";
+            } else {
+                // Start recording
+                try {
+                    // Get access to screen and audio streams
+                    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    // Merge the screen and audio streams
+                    const tracks = [...screenStream.getTracks(), ...audioStream.getTracks()];
+                    const mergedStream = new MediaStream(tracks);
+
+                    preview.srcObject = mergedStream;
+
+                    // Create a new MediaRecorder instance
+                    mediaRecorder = new MediaRecorder(mergedStream);
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data && event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: "video/webm" });
+
+                        // Automatically save the recording
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "screen_recording.webm";
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+
+                        recordedChunks = []; // Clear recordedChunks array for the next recording
+                    };
+
+                    recordedChunks = []; // Initialize the recordedChunks array before starting recording
+                    mediaRecorder.start();
+                    isRecording = true;
+                    startButton.textContent = "Stop Recording";
+                } catch (err) {
+                    console.error("Error accessing media devices:", err);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
